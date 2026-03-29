@@ -1,0 +1,5 @@
+*.o
+splash
+players/*.so
+*.dSYM
+.DS_Store
