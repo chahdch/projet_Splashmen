@@ -42,8 +42,7 @@ You can pass 1 to 4 player libraries:
 
 Compile as shared library:
 ```bash
-gcc -shared -fPIC -Iinclude -o myplayer.so myplayer.c
-./splash myplayer.so players/player2.so players/player3.so players/player4.so
+make run
 ```
 
 ## Actions
