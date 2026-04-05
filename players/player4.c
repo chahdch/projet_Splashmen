@@ -44,6 +44,14 @@ static char random_teleport(void)
     return teleports[rand() % (int)(sizeof(teleports) / sizeof(teleports[0]))];
 }
 
+static char random_special(void)
+{
+    static const char specials[] = {
+        ACTION_BOMB, ACTION_FORK, ACTION_CLEAN, ACTION_MUTE, ACTION_SWAP
+    };
+    return specials[rand() % (int)(sizeof(specials) / sizeof(specials[0]))];
+}
+
 char get_action(void)
 {
     int special_roll;
@@ -69,6 +77,10 @@ char get_action(void)
         }
         if (special_roll == 1) {
             current_action = random_teleport();
+            return current_action;
+        }
+        if (special_roll == 2) {
+            current_action = random_special();
             return current_action;
         }
 
