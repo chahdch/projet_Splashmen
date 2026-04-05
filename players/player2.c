@@ -40,6 +40,14 @@ static char random_dash(void)
     return dashes[rand() % (int)(sizeof(dashes) / sizeof(dashes[0]))];
 }
 
+static char random_special(void)
+{
+    static const char specials[] = {
+        ACTION_BOMB, ACTION_FORK, ACTION_CLEAN, ACTION_MUTE, ACTION_SWAP
+    };
+    return specials[rand() % (int)(sizeof(specials) / sizeof(specials[0]))];
+}
+
 char get_action(void)
 {
     int roll;
@@ -47,9 +55,11 @@ char get_action(void)
     ensure_rng_initialized();
     roll = rand() % 100;
 
-    if (roll < 70)
+    if (roll < 60)
         return random_move();
-    if (roll < 90)
+    if (roll < 80)
         return random_teleport();
-    return random_dash();
+    if (roll < 90)
+        return random_dash();
+    return random_special();
 }

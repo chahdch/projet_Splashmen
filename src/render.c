@@ -164,6 +164,31 @@ static void draw_bar(GameState *gs, int x, int y, int w, int h,
     draw_rect_outline(gs, x, y, w, h, RGB(70, 70, 90));
 }
 
+static const char *action_name(char action)
+{
+    switch ((unsigned char)action) {
+        case 0: return "STILL";
+        case 1: return "MOVE_L";
+        case 2: return "MOVE_R";
+        case 3: return "MOVE_U";
+        case 4: return "MOVE_D";
+        case 5: return "DASH_L";
+        case 6: return "DASH_R";
+        case 7: return "DASH_U";
+        case 8: return "DASH_D";
+        case 9: return "TELE_L";
+        case 10: return "TELE_R";
+        case 11: return "TELE_U";
+        case 12: return "TELE_D";
+        case 13: return "BOMB";
+        case 14: return "FORK";
+        case 15: return "CLEAN";
+        case 16: return "MUTE";
+        case 17: return "SWAP";
+        default: return "?";
+    }
+}
+
 static int find_winner(GameState *gs)
 {
     int w = 0;
@@ -174,6 +199,7 @@ static int find_winner(GameState *gs)
 
 void game_render(GameState *gs)
 {
+    if (!gs->pixels) return;
     /* Clear */
     memset(gs->pixels, 0x10, WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(unsigned int));
 
@@ -231,6 +257,26 @@ void game_render(GameState *gs)
         }
     }
 
+    /* ── Clone markers (smaller diamond) ── */
+    for (int i = 0; i < gs->num_players; i++) {
+        Clone *c = &gs->clones[i];
+        if (!c->active) continue;
+        Color3 col = gs->players[c->owner].color;
+        int cx = GRID_OFFSET_X + c->x * CELL_SIZE + CELL_SIZE / 2;
+        int cy = GRID_OFFSET_Y + c->y * CELL_SIZE + CELL_SIZE / 2;
+        int r = CELL_SIZE / 2;
+        for (int dy = -r; dy <= r; dy++) {
+            for (int dx = -r; dx <= r; dx++) {
+                if (abs(dx) + abs(dy) <= r) {
+                    int fx = cx + dx, fy = cy + dy;
+                    if (fx >= 0 && fx < WINDOW_WIDTH && fy >= 0 && fy < WINDOW_HEIGHT) {
+                        PX(fx, fy) = RGB(col.r, col.g, col.b);
+                    }
+                }
+            }
+        }
+    }
+
     /* ── Scoreboard ── */
     int sb_y = GRID_OFFSET_Y + GRID_SIZE * CELL_SIZE + 14;
     int gap = 8;
@@ -259,18 +305,22 @@ void game_render(GameState *gs)
         draw_text(gs, cbuf, px + 6, sb_y + 26, 1, RGB(180, 180, 180));
         draw_bar(gs, px + 6, sb_y + 37, panel_w - 12, 5, p->credits, INITIAL_CREDITS, pc);
 
+        /* Action */
+        const char *act = action_name(p->current_action);
+        draw_text(gs, act, px + 6, sb_y + 48, 1, RGB(200, 200, 120));
+
         /* Cells */
         char cellbuf[32];
         snprintf(cellbuf, sizeof(cellbuf), "cells%d", p->cells_owned);
-        draw_text(gs, cellbuf, px + 6, sb_y + 50, 1, RGB(180, 180, 180));
-        draw_bar(gs, px + 6, sb_y + 61, panel_w - 12, 5,
+        draw_text(gs, cellbuf, px + 6, sb_y + 62, 1, RGB(180, 180, 180));
+        draw_bar(gs, px + 6, sb_y + 73, panel_w - 12, 5,
                  p->cells_owned, GRID_SIZE * GRID_SIZE, pc);
 
         /* Pct */
         int pct = (p->cells_owned * 100) / (GRID_SIZE * GRID_SIZE);
         char pctbuf[16];
         snprintf(pctbuf, sizeof(pctbuf), "%d%%", pct);
-        draw_text(gs, pctbuf, px + 6, sb_y + 74, 1, RGB(140, 140, 140));
+        draw_text(gs, pctbuf, px + 6, sb_y + 86, 1, RGB(140, 140, 140));
     }
 
     /* ── Game Over overlay ── */
@@ -305,10 +355,27 @@ void game_render(GameState *gs)
         draw_text(gs, scbuf, bx + bw - sw - 20, by + 62, 3, RGB(210, 210, 210));
     }
 
+    /* Controls display */
+    int ctrl_y = 20;
+    int ctrl_x = WINDOW_WIDTH - GRID_OFFSET_X - 180;
+    draw_text(gs, "SPACE:Pause", ctrl_x, ctrl_y, 1, RGB(100, 200, 255));
+    draw_text(gs, "R:Restart", ctrl_x, ctrl_y + 14, 1, RGB(100, 200, 255));
+    draw_text(gs, "UP/DOWN:Speed", ctrl_x, ctrl_y + 28, 1, RGB(100, 200, 255));
+    
+    char speed_buf[32];
+    snprintf(speed_buf, sizeof(speed_buf), "Speed:%dx", gs->speed_factor);
+    draw_text(gs, speed_buf, ctrl_x, ctrl_y + 42, 1, RGB(100, 200, 255));
+
+    if (gs->paused) {
+        int pause_x = (WINDOW_WIDTH - text_width("[PAUSED]", 2)) / 2;
+        draw_text(gs, "[PAUSED]", pause_x, ctrl_y + 60, 2, RGB(255, 100, 100));
+    }
+
     /* Blit to texture */
     SDL_UpdateTexture(gs->texture, NULL, gs->pixels, WINDOW_WIDTH * sizeof(unsigned int));
     
     /* Render */
+    if (!gs->renderer) return;
     SDL_RenderClear(gs->renderer);
     SDL_RenderCopy(gs->renderer, gs->texture, NULL, NULL);
     SDL_RenderPresent(gs->renderer);
