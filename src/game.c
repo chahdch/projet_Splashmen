@@ -443,6 +443,8 @@ int game_init(GameState *gs, int argc, char **argv)
         return -1;
     }
 
+    /* SDL_mixer init (optional - no error if not available) */
+
     gs->window = SDL_CreateWindow("Splashmem",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
@@ -479,6 +481,8 @@ int game_init(GameState *gs, int argc, char **argv)
         free(gs->pixels);
         return -1;
     }
+
+    /* Music system not available (SDL_mixer not installed) */
 
     return 0;
 }
